@@ -1,0 +1,12 @@
+{
+  "name": "aippt-ui-iframe",
+  "version": "1.0.0",
+  "description": "通过 UI iframe 方式接入文多多AiPPT(https://docmee.cn)",
+  "main": "index.html",
+  "scripts": {
+    "start": "npx serve"
+  },
+  "keywords": ["文多多", "aippt"],
+  "author": "veasion",
+  "license": "MIT"
+}

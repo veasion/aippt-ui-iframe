@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <title>文多多 AiPPT</title>
+    <script src="static/docmee-ui-sdk-iframe.min.js"></script>
+    <style>
+      body {
+        width: 100vw;
+        height: 100vh;
+        margin: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+      #container {
+        width: calc(100% - 20px);
+        height: calc(100% - 20px);
+        margin: 0;
+        padding: 0;
+        border-radius: 12px;
+        box-shadow: 0 0 12px rgba(120, 120, 120, 0.3);
+        overflow: hidden;
+        background: linear-gradient(-157deg, #f57bb0, #867dea);
+        color: white;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="container"></div>
+  </body>
+  <script type="module">
+    if (location.protocol == 'file:') {
+      alert('不支持 file 协议直接访问，请启动 http 服务访问！\n\n启动命令：npm run start')
+    }
+
+    // 文多多AiPPT
+    // 官网 https://docmee.cn
+    // 开放平台 https://docmee.cn/open-platform/api#接口鉴权
+    var apiKey = '' // TODO 填写你的API-KEY
+
+    // 这里只是demo演示，创建token请在服务端调用（不要把ApiKey暴露到前端防止泄露）
+    // 接口文档: https://docmee.cn/open-platform/api#%E5%88%9B%E5%BB%BA%E6%8E%A5%E5%8F%A3-token
+    async function createApiToken(apiKey, uid, limit) {
+      return new Promise((resolve, reject) => {
+        if (!apiKey) {
+            alert('请在代码中设置 apiKey')
+            reject()
+            return
+        }
+        let url = 'https://docmee.cn/api/user/createApiToken'
+        let xhr = new XMLHttpRequest()
+        xhr.open('POST', url, true)
+        xhr.setRequestHeader('Api-Key', apiKey)
+        xhr.setRequestHeader('Content-Type', 'application/json')
+        xhr.send(JSON.stringify({ uid, limit }))
+        xhr.onreadystatechange = function () {
+          if (xhr.readyState === 4) {
+            if (xhr.status === 200) {
+                let resp = JSON.parse(xhr.responseText)
+                if (resp.code != 0) {
+                    alert('创建token异常：' + resp.message)
+                    reject()
+                    return
+                }
+                var token = resp.data.token
+                resolve(token)
+            } else {
+              alert('网络异常, httpStatus: ' + xhr.status)
+              reject()
+            }
+          }
+        }
+        xhr.onerror = function (e) {
+            alert('创建token异常')
+            reject()
+        }
+      })
+    }
+
+    var uid = 'xxx' // 用户ID，不同uid创建的token数据会相互隔离，主要用于数据隔离
+    var limit = 10 // 限制 token 最大生成PPT次数
+    var token = await createApiToken(apiKey, uid, limit) // 创建token（请在调用服务端接口实现）
+
+    // 初始化 UI iframe
+    const docmeeUI = new DocmeeUI({
+      token: token, // token
+      container: document.querySelector("#container"), // 挂载 iframe 的容器
+      page: "creator", // 'dashboard' PPT列表; 'creator' 创建页面
+      background: "linear-gradient(-157deg,#f57bb0, #867dea)", // 自定义背景
+      padding: "40px 20px 0px",
+      onMessage(message) {
+        console.log(message)
+
+        if (message.type === "invalid-token") {
+          // 在token失效时触发
+          console.log("token 认证错误")
+          // 更换新的 token
+          createApiToken(apiKey, uid, limit).then(newToken => {
+            docmeeUI.updateToken(newToken)
+          }).catch(e => {
+            console.error('更新token失败')
+          })
+        }
+        if (message.type === "beforeGenerate") {
+          const { subtype, fields } = message.data
+          if (subtype === "outline") {
+            // 生成大纲前触发
+            console.log("即将生成ppt大纲", fields)
+            return true
+          } else if (subtype === "ppt") {
+            // 生成ppt前触发
+            console.log("即将生成ppt", fields)
+            docmeeUI.sendMessage({
+              type: "success",
+              content: "继续生成PPT",
+            })
+            return true
+          }
+        }
+        if (message.type === "beforeDownload") {
+          // 自定义下载PPT的文件名称
+          return `PPT_${new Date().getTime()}.pptx`
+        }
+      },
+    })
+  </script>
+</html>
