@@ -10,26 +10,18 @@
         width: 100vw;
         height: 100vh;
       }
-      .page_navigate {
-        padding: 5px;
-        height: 45px;
-        width: calc(100% - 50px);
-        display: flex;
-        justify-content: center;
-        align-items: center;
+      .input_div {
+          padding: 20px;
+          display: flex;
+          flex-direction: row;
+          justify-content: center;
+          align-items: center;
       }
-      .page_navigate > div {
-        padding: 8px 16px;
-        margin-right: 8px;
-        cursor: pointer;
-        user-select: none;
-        border: 2px solid #f0f0f0;
-        border-radius: 6px;
-      }
-      .page_navigate .selected {
-        background: #f57bb0;
+      #text, #dataUrl {
+        display: none;
       }
       #container {
+        display: none;
         width: calc(100% - 50px);
         height: calc(100% - 100px);
         margin: 0 auto;
@@ -43,61 +35,33 @@
     </style>
   </head>
   <body>
-    <!-- 示例二 -->
     <div style="text-align: center;padding: 5px;font-size: 14px">
-        <span>当前为示例一，点击跳转至&nbsp;</span>
-        <a href="javascript:location.href=`/demo2?token=${token}`">示例二</a>
+        <a href="/">返回</a>
     </div>
-    <!-- 自定义导航按钮 -->
-    <div class="page_navigate">
-      <div id="page_creator" class="selected" onclick="toPage('creator')">生成PPT</div>
-      <div id="page_dashboard" onclick="toPage('dashboard')">PPT列表</div>
-      <div id="page_customTemplate" onclick="toPage('customTemplate')">自定义模板</div>
+    <!-- 通过代码控制PPT创建 -->
+    <div class="input_div">
+        <select id="selectType" style="margin-right: 8px" onchange="changeSelectType()">
+          <option value="subject">根据主题</option>
+          <option value="text">根据内容</option>
+          <option value="dataUrl">根据文件链接</option>
+        </select>
+        <input id="subject" type="text" placeholder="PPT主题" />
+        <textarea id="text" placeholder="请粘贴文本内容" rows="5" cols="50" maxlength="6000"></textarea>
+        <input id="dataUrl" type="text" placeholder="文件链接（公网可访问）" style="width:220px" />
+        <button style="margin-left: 8px" onclick="generate()">生成PPT</button>
     </div>
     <!-- 挂载iframe容器 -->
     <div id="container"></div>
   </body>
   <script>
     if (location.protocol == 'file:') {
-      alert('不支持 file 协议直接访问，请启动 http 服务访问！\n\n启动命令：npm run start')
+        alert('不支持 file 协议直接访问，请启动 http 服务访问！\n\n启动命令：npm run start')
     }
 
-    // 文多多AiPPT
-    // 官网 https://docmee.cn
-    // 开放平台 https://docmee.cn/open-platform/api#接口鉴权
-    var apiKey = '' // TODO 填写你的API-KEY
-
-    // 这里只是demo演示，创建token请在服务端调用（不要把ApiKey暴露到前端防止泄露）
-    // 接口文档: https://docmee.cn/open-platform/api#%E5%88%9B%E5%BB%BA%E6%8E%A5%E5%8F%A3-token
-    function createApiToken(apiKey, uid, limit) {
-      if (!apiKey) {
-          alert('请在代码中设置 apiKey')
-          return
-      }
-      let url = 'https://docmee.cn/api/user/createApiToken'
-      let xhr = new XMLHttpRequest()
-      xhr.open('POST', url, false)
-      xhr.setRequestHeader('Api-Key', apiKey)
-      xhr.setRequestHeader('Content-Type', 'application/json')
-      xhr.send(JSON.stringify({ uid, limit }))
-      if (xhr.readyState === 4) {
-        if (xhr.status === 200) {
-            let resp = JSON.parse(xhr.responseText)
-            if (resp.code != 0) {
-                alert('创建token异常：' + resp.message)
-                return
-            }
-            let token = resp.data.token
-            return token
-        } else {
-          alert('网络异常, httpStatus: ' + xhr.status)
-        }
-      }
+    var token = new URLSearchParams(window.location.search).get('token')
+    if (!token) {
+        alert('token不能为空')
     }
-
-    var uid = 'xxx' // 用户ID，不同uid创建的token数据会相互隔离，主要用于数据隔离
-    var limit = null // 限制 token 最大生成PPT次数
-    var token = createApiToken(apiKey, uid, limit) // 创建token（请在调用服务端接口实现）
 
     // 初始化 UI iframe
     const docmeeUI = new DocmeeUI({
@@ -157,25 +121,39 @@
         }
       }
     })
-
-    function toPage(page) {
-      docmeeUI.navigate({ page })
-      pageChange(page)
+    
+    function changeSelectType() {
+        let selectTypes = ['subject', 'text', 'dataUrl']
+        let selectType = document.getElementById('selectType').value
+        for (let i = 0; i < selectTypes.length; i++) {
+            let element = document.getElementById(selectTypes[i])
+            element.style.display = (selectType == selectTypes[i] ? 'inline-block' : 'none')
+        }
     }
-
-    function pageChange(page) {
-      let element = document.getElementById('page_' + page)
-      if (element) {
-        element.parentNode.childNodes.forEach(c => c.classList && c.classList.remove('selected'))
-        element.classList.add('selected')
-      }
+    
+    function generate() {
+        let selectType = document.getElementById('selectType').value
+        let input = document.getElementById(selectType).value
+        if (!input) {
+            alert('输入不能为空')
+            return
+        }
+        if (selectType == 'dataUrl' && !input.startsWith('http')) {
+            alert('文件链接格式错误')
+            return
+        }
+        docmeeUI.navigate({ page: 'creator' })
+        if (selectType == 'subject') {
+            docmeeUI.changeCreatorData({ subject: input }, true)
+        } else if (selectType == 'text') {
+            docmeeUI.changeCreatorData({ text: input }, true)
+        } else if (selectType == 'dataUrl') {
+            docmeeUI.changeCreatorData({ dataUrl: input }, true)
+        } else {
+            alert('未知类型：' + selectType)
+            return
+        }
+        document.querySelector('#container').style.display = 'block'
     }
-
-    // 其他函数
-    // docmeeUI.navigate({ page: 'editor', pptId: 'xxxx' })
-    // docmeeUI.changeCreatorData({ subject: 'AI未来的发展' }, true)
-    // docmeeUI.changeCreatorData({ text: '文本内容...' }, true)
-    // docmeeUI.getInfo()
-    // docmeeUI.destroy()
   </script>
 </html>
