@@ -91,7 +91,7 @@
     }
 
     var uid = 'xxx' // 用户ID，不同uid创建的token数据会相互隔离，主要用于数据隔离
-    var limit = 10 // 限制 token 最大生成PPT次数
+    var limit = null // 限制 token 最大生成PPT次数
     var token = createApiToken(apiKey, uid, limit) // 创建token（请在调用服务端接口实现）
 
     // 初始化 UI iframe
@@ -113,15 +113,14 @@
           // 更换新的 token
           let newToken = createApiToken(apiKey, uid, limit)
           docmeeUI.updateToken(newToken)
-        }
-        if (message.type === 'beforeGenerate') {
+        } else if (message.type === 'beforeGenerate') {
           const { subtype, fields } = message.data
           if (subtype === 'outline') {
             // 生成大纲前触发
             console.log('即将生成ppt大纲', fields)
             return true
           } else if (subtype === 'ppt') {
-            // 生成ppt前触发
+            // 生成PPT前触发
             console.log('即将生成ppt', fields)
             docmeeUI.sendMessage({
               type: 'success',
@@ -129,25 +128,29 @@
             })
             return true
           }
-        }
-        if (message.type === 'beforeDownload') {
-          // 自定义下载PPT的文件名称
-          return `PPT_${new Date().getTime()}.pptx`
-        }
-        if (message.type === 'beforeCreateCustomTemplate') {
+        } else if (message.type === 'beforeCreateCustomTemplate') {
           const { file, totalPptCount } = message.data
-          // 允许用户继续制作PPT
+          // 是否允许用户继续制作PPT
           console.log('用户自定义完整模版，PPT文件：', file.name)
           if (totalPptCount < 2) {
             console.log('用户积分不足，不允许制作自定义完整模版')
             return false
           }
           return true
-        }
-        if (message.type == 'pageChange') {
+        } else if (message.type == 'pageChange') {
           pageChange(message.data.page)
+        } else if (message.type === 'beforeDownload') {
+          // 自定义下载PPT的文件名称
+          return `PPT_${new Date().getTime()}.pptx`
+        } else if (message.type == 'error') {
+          if (message.data.code == 88) {
+            // 创建token传了limit参数可以限制使用次数
+            alert('您的次数已用完')
+          } else {
+            alert('发生错误：' + message.data.message)
+          }
         }
-      },
+      }
     })
 
     function toPage(page) {
@@ -162,5 +165,10 @@
         element.classList.add('selected')
       }
     }
+
+    // 其他函数
+    // docmeeUI.navigate({ page: 'editor', pptId: 'xxxx' })
+    // docmeeUI.changeCreatorData({ subject: 'AI未来的发展' }, true)
+    // docmeeUI.changeCreatorData({ text: '文本内容...' }, true)
   </script>
 </html>
