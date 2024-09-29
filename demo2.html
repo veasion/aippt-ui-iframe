@@ -17,7 +17,7 @@
           justify-content: center;
           align-items: center;
       }
-      #text, #dataUrl {
+      #input_text, #input_file, #input_dataUrl {
         display: none;
       }
       #container {
@@ -43,11 +43,13 @@
         <select id="selectType" style="margin-right: 8px" onchange="changeSelectType()">
           <option value="subject">根据主题</option>
           <option value="text">根据内容</option>
+          <option value="file">根据文件</option>
           <option value="dataUrl">根据文件链接</option>
         </select>
-        <input id="subject" type="text" placeholder="PPT主题" />
-        <textarea id="text" placeholder="请粘贴文本内容" rows="5" cols="50" maxlength="6000"></textarea>
-        <input id="dataUrl" type="text" placeholder="文件链接（公网可访问）" style="width:220px" />
+        <input id="input_subject" type="text" placeholder="PPT主题" />
+        <textarea id="input_text" placeholder="请粘贴文本内容" rows="5" cols="50" maxlength="6000"></textarea>
+        <input id="input_file" type="file" placeholder="请选择文件" accept=".doc, .docx, .xls, .xlsx, .pdf, .ppt, .pptx, .txt, .md" />
+        <input id="input_dataUrl" type="text" placeholder="文件链接（公网可访问）" style="width:220px" />
         <button style="margin-left: 8px" onclick="generate()">生成PPT</button>
     </div>
     <!-- 挂载iframe容器 -->
@@ -123,17 +125,45 @@
     })
     
     function changeSelectType() {
-        let selectTypes = ['subject', 'text', 'dataUrl']
+        let selectTypes = ['subject', 'text', 'file', 'dataUrl']
         let selectType = document.getElementById('selectType').value
         for (let i = 0; i < selectTypes.length; i++) {
-            let element = document.getElementById(selectTypes[i])
+            let element = document.getElementById('input_' + selectTypes[i])
             element.style.display = (selectType == selectTypes[i] ? 'inline-block' : 'none')
         }
+    }
+
+    function parseFileData(file) {
+      const formData = new FormData()
+      formData.append('file', file)
+      let url = 'https://docmee.cn/api/ppt/parseFileData'
+      let xhr = new XMLHttpRequest()
+      xhr.open('POST', url, false)
+      xhr.setRequestHeader('token', token)
+      xhr.send(formData)
+      if (xhr.readyState === 4) {
+        if (xhr.status === 200) {
+            let resp = JSON.parse(xhr.responseText)
+            if (resp.code != 0) {
+                alert('解析文件异常：' + resp.message)
+                return null
+            }
+            return resp.data.dataUrl
+        } else {
+          alert('解析文件网络异常, httpStatus: ' + xhr.status)
+          return null
+        }
+      }
     }
     
     function generate() {
         let selectType = document.getElementById('selectType').value
-        let input = document.getElementById(selectType).value
+        let input = null
+        if (selectType == 'file') {
+            input = document.getElementById('input_' + selectType).files[0]
+        } else {
+            input = document.getElementById('input_' + selectType).value
+        }
         if (!input) {
             alert('输入不能为空')
             return
@@ -147,6 +177,9 @@
             docmeeUI.changeCreatorData({ subject: input }, true)
         } else if (selectType == 'text') {
             docmeeUI.changeCreatorData({ text: input }, true)
+        } else if (selectType == 'file') {
+            let dataUrl = parseFileData(input)
+            docmeeUI.changeCreatorData({ dataUrl }, true)
         } else if (selectType == 'dataUrl') {
             docmeeUI.changeCreatorData({ dataUrl: input }, true)
         } else {
