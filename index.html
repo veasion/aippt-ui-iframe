@@ -44,9 +44,9 @@
   </head>
   <body>
     <!-- 示例二 -->
-    <div style="text-align: center; padding: 5px; font-size: 14px">
-      <span>当前为示例一，点击跳转至&nbsp;</span>
-      <a href="javascript:location.href=`/demo2?token=${token}`">示例二</a>
+    <div style="text-align: center;padding: 5px;font-size: 14px">
+        <span>当前为示例一，点击跳转至&nbsp;</span>
+        <a href="javascript:location.href=`/demo2?token=${token}`">示例二</a>
     </div>
     <!-- 自定义导航按钮 -->
     <div class="page_navigate">
@@ -58,130 +58,117 @@
     <div id="container"></div>
   </body>
   <script>
-    if (location.protocol == "file:") {
-      alert("不支持 file 协议直接访问，请启动 http 服务访问！\n\n启动命令：npm run start");
+    if (location.protocol == 'file:') {
+        alert('不支持 file 协议直接访问，请启动 http 服务访问！\n\n启动命令：npm run start')
     }
 
     // 文多多AiPPT
     // 官网 https://docmee.cn
     // 开放平台 https://docmee.cn/open-platform/api#接口鉴权
-    var apiKey = ""; // TODO 填写你的API-KEY
+    var apiKey = '' // TODO 填写你的API-KEY
 
     // 这里只是demo演示，创建token请在服务端调用（不要把ApiKey暴露到前端防止泄露）
     // 接口文档: https://docmee.cn/open-platform/api#%E5%88%9B%E5%BB%BA%E6%8E%A5%E5%8F%A3-token
     function createApiToken(apiKey, uid, limit) {
       if (!apiKey) {
-        alert("请在代码中设置 apiKey");
-        return;
+          alert('请在代码中设置 apiKey')
+          return
       }
-      let url = "https://docmee.cn/api/user/createApiToken";
-      let xhr = new XMLHttpRequest();
-      xhr.open("POST", url, false);
-      xhr.setRequestHeader("Api-Key", apiKey);
-      xhr.setRequestHeader("Content-Type", "application/json");
-      xhr.send(JSON.stringify({ uid, limit }));
+      let url = 'https://docmee.cn/api/user/createApiToken'
+      let xhr = new XMLHttpRequest()
+      xhr.open('POST', url, false)
+      xhr.setRequestHeader('Api-Key', apiKey)
+      xhr.setRequestHeader('Content-Type', 'application/json')
+      xhr.send(JSON.stringify({ uid, limit }))
       if (xhr.readyState === 4) {
         if (xhr.status === 200) {
-          let resp = JSON.parse(xhr.responseText);
-          if (resp.code != 0) {
-            alert("创建token异常：" + resp.message);
-            return;
-          }
-          let token = resp.data.token;
-          return token;
+            let resp = JSON.parse(xhr.responseText)
+            if (resp.code != 0) {
+                alert('创建token异常：' + resp.message)
+                return
+            }
+            let token = resp.data.token
+            return token
         } else {
-          alert("网络异常, httpStatus: " + xhr.status);
+          alert('网络异常, httpStatus: ' + xhr.status)
         }
       }
     }
 
-    var uid = "xxx"; // 用户ID，不同uid创建的token数据会相互隔离，主要用于数据隔离
-    var limit = null; // 限制 token 最大生成PPT次数
-    var token = createApiToken(apiKey, uid, limit); // 创建token（请在调用服务端接口实现）
+    var uid = 'xxx' // 用户ID，不同uid创建的token数据会相互隔离，主要用于数据隔离
+    var limit = null // 限制 token 最大生成PPT次数
+    var token = createApiToken(apiKey, uid, limit) // 创建token（请在调用服务端接口实现）
 
     // 初始化 UI iframe
     const docmeeUI = new DocmeeUI({
       pptId: null,
       token: token, // token
-      container: document.querySelector("#container"), // 挂载 iframe 的容器
-      page: "creator", // 'dashboard' ppt列表; 'creator' 创建页面; 'customTemplate' 自定义模版
-      lang: "zh", // 国际化
-      mode: "light", // light 亮色模式, dark 暗色模式
+      container: document.querySelector('#container'), // 挂载 iframe 的容器
+      page: 'creator', // 'dashboard' ppt列表; 'creator' 创建页面; 'customTemplate' 自定义模版
+      lang: 'zh', // 国际化
+      mode: 'light', // light 亮色模式, dark 暗色模式
       isMobile: false, // 移动端模式
-      createCustomTemplateWhenEmpty: true, // 自定义模板页面为空时是否显示 “立即创建”，点击跳转到上传模板页面
-      background: "linear-gradient(-157deg,#f57bb0, #867dea)", // 自定义背景
-      padding: "40px 20px 0px",
+      background: 'linear-gradient(-157deg,#f57bb0, #867dea)', // 自定义背景
+      padding: '40px 20px 0px',
       onMessage(message) {
-        console.log(message);
-        if (message.type === "invalid-token") {
+        console.log(message)
+        if (message.type === 'invalid-token') {
           // 在token失效时触发
-          console.log("token 认证错误");
+          console.log('token 认证错误')
           // 更换新的 token
-          let newToken = createApiToken(apiKey, uid, limit);
-          docmeeUI.updateToken(newToken);
-        } else if (message.type === "beforeGenerate") {
-          const { subtype, fields } = message.data;
-          if (subtype === "outline") {
+          let newToken = createApiToken(apiKey, uid, limit)
+          docmeeUI.updateToken(newToken)
+        } else if (message.type === 'beforeGenerate') {
+          const { subtype, fields } = message.data
+          if (subtype === 'outline') {
             // 生成大纲前触发
-            console.log("即将生成ppt大纲", fields);
-            return true;
-          } else if (subtype === "ppt") {
+            console.log('即将生成ppt大纲', fields)
+            return true
+          } else if (subtype === 'ppt') {
             // 生成PPT前触发
-            console.log("即将生成ppt", fields);
+            console.log('即将生成ppt', fields)
             docmeeUI.sendMessage({
-              type: "success",
-              content: "继续生成PPT",
-            });
-            return true;
+              type: 'success',
+              content: '继续生成PPT',
+            })
+            return true
           }
-        } else if (message.type === "beforeCreateCustomTemplate") {
-          const { file, totalPptCount } = message.data;
+        } else if (message.type === 'beforeCreateCustomTemplate') {
+          const { file, totalPptCount } = message.data
           // 是否允许用户继续制作PPT
-          console.log("用户自定义完整模版，PPT文件：", file.name);
+          console.log('用户自定义完整模版，PPT文件：', file.name)
           if (totalPptCount < 2) {
-            console.log("用户积分不足，不允许制作自定义完整模版");
-            return false;
+            console.log('用户生成积分不足，不允许制作自定义完整模版')
+            return false
           }
-          return true;
-        } else if (message.type === "beforeCreateCustomTemplate") {
-          // 用户创建了自定义模版的监听回调
-          const { data } = message;
-          // data 是用用户创建的自定义模版信息
-          const doWhat = data.do;
-          if (doWhat === "create_complex") {
-            // 用户新创建的复杂模版（此时系统会扣除您2积分）
-          } else if (doWhat === "modify_complex") {
-            // 用户修改了的复杂模版的源文件（不扣除积分）
-          } else if (doWhat === "create_simple") {
-            // 用户创建了简单模版（不扣除积分）
-            // 不论用户修改或创建简单模版都进入这里（系统不扣积分）
-          }
-        } else if (message.type == "pageChange") {
-          pageChange(message.data.page);
-        } else if (message.type === "beforeDownload") {
+          return true
+        } else if (message.type == 'pageChange') {
+          pageChange(message.data.page)
+        } else if (message.type === 'beforeDownload') {
           // 自定义下载PPT的文件名称
-          return `PPT_${new Date().getTime()}.pptx`;
-        } else if (message.type == "error") {
+          const { id, subject } = message.data
+          return `PPT_${subject}.pptx`
+        } else if (message.type == 'error') {
           if (message.data.code == 88) {
             // 创建token传了limit参数可以限制使用次数
-            alert("您的次数已用完");
+            alert('您的次数已用完')
           } else {
-            alert("发生错误：" + message.data.message);
+            alert('发生错误：' + message.data.message)
           }
         }
-      },
-    });
+      }
+    })
 
     function toPage(page) {
-      docmeeUI.navigate({ page });
-      pageChange(page);
+      docmeeUI.navigate({ page })
+      pageChange(page)
     }
 
     function pageChange(page) {
-      let element = document.getElementById("page_" + page);
+      let element = document.getElementById('page_' + page)
       if (element) {
-        element.parentNode.childNodes.forEach((c) => c.classList && c.classList.remove("selected"));
-        element.classList.add("selected");
+        element.parentNode.childNodes.forEach(c => c.classList && c.classList.remove('selected'))
+        element.classList.add('selected')
       }
     }
 
