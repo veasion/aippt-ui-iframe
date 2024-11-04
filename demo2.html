@@ -17,7 +17,7 @@
           justify-content: center;
           align-items: center;
       }
-      #input_text, #input_file, #input_dataUrl {
+      #input_text, #input_file, #input_dataUrl, #input_outline {
         display: none;
       }
       #container {
@@ -45,11 +45,13 @@
           <option value="text">根据内容</option>
           <option value="file">根据文件</option>
           <option value="dataUrl">根据文件链接</option>
+          <option value="outline">导入大纲</option>
         </select>
         <input id="input_subject" type="text" placeholder="PPT主题" />
         <textarea id="input_text" placeholder="请粘贴文本内容" rows="5" cols="50" maxlength="6000"></textarea>
         <input id="input_file" type="file" placeholder="请选择文件" accept=".doc, .docx, .xls, .xlsx, .pdf, .ppt, .pptx, .txt, .md" />
         <input id="input_dataUrl" type="text" placeholder="文件链接（公网可访问）" style="width:220px" />
+        <input id="input_outline" type="file" placeholder="请选择文件" accept=".md, .doc, .docx, .xmind, .mm" />
         <button style="margin-left: 8px" onclick="generate()">生成PPT</button>
     </div>
     <!-- 挂载iframe容器 -->
@@ -125,7 +127,7 @@
     })
     
     function changeSelectType() {
-        let selectTypes = ['subject', 'text', 'file', 'dataUrl']
+        let selectTypes = ['subject', 'text', 'file', 'dataUrl', 'outline']
         let selectType = document.getElementById('selectType').value
         for (let i = 0; i < selectTypes.length; i++) {
             let element = document.getElementById('input_' + selectTypes[i])
@@ -155,11 +157,35 @@
         }
       }
     }
-    
+
+    function extractFileOutline(file) {
+      const formData = new FormData()
+      formData.append('file', file)
+      let url = 'https://docmee.cn/api/ppt/extractFileOutline?format=text'
+      let xhr = new XMLHttpRequest()
+      xhr.open('POST', url, false)
+      xhr.setRequestHeader('token', token)
+      xhr.send(formData)
+      if (xhr.readyState === 4) {
+        if (xhr.status === 200) {
+            let resp = JSON.parse(xhr.responseText)
+            if (resp.code != 0) {
+                alert('提取文件大纲异常：' + resp.message)
+                return null
+            }
+            const data = resp.data
+            return { dataUrl: data.dataUrl, outlineText: data.outlineText }
+        } else {
+          alert('提取文件大纲网络异常, httpStatus: ' + xhr.status)
+          return null
+        }
+      }
+    }
+
     function generate() {
         let selectType = document.getElementById('selectType').value
         let input = null
-        if (selectType == 'file') {
+        if (selectType == 'file' || selectType == 'outline') {
             input = document.getElementById('input_' + selectType).files[0]
         } else {
             input = document.getElementById('input_' + selectType).value
@@ -174,14 +200,22 @@
         }
         docmeeUI.navigate({ page: 'creator' })
         if (selectType == 'subject') {
+            // 根据主题
             docmeeUI.changeCreatorData({ subject: input }, true)
         } else if (selectType == 'text') {
+            // 根据文本内容
             docmeeUI.changeCreatorData({ text: input }, true)
         } else if (selectType == 'file') {
+            // 根据文件
             let dataUrl = parseFileData(input)
             docmeeUI.changeCreatorData({ dataUrl }, true)
         } else if (selectType == 'dataUrl') {
+            // 根据文件链接
             docmeeUI.changeCreatorData({ dataUrl: input }, true)
+        } else if (selectType == 'outline') {
+            // 导入大纲
+            let data = extractFileOutline(input)
+            docmeeUI.changeCreatorData({ outlineMarkdown: data.outlineText, dataUrl: data.dataUrl }, true)
         } else {
             alert('未知类型：' + selectType)
             return
